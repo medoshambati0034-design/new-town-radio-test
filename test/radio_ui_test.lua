@@ -8,9 +8,22 @@ local function check(name, cond)
     else failures = failures + 1; print("FAIL - " .. name) end
 end
 
+local disconnectCount = 0 -- يجب أن يُعرّف قبل signal() حتى يُقرأ كـ upvalue
+
 local function signal()
     local s = { handlers = {} }
-    function s:Connect(fn) self.handlers[#self.handlers + 1] = fn; return { Disconnect = function() end } end
+    function s:Connect(fn)
+        self.handlers[#self.handlers + 1] = fn
+        local conn = {}
+        local owner = self
+        function conn.Disconnect()
+            disconnectCount = disconnectCount + 1
+            for i, h in ipairs(owner.handlers) do
+                if h == fn then table.remove(owner.handlers, i) break end
+            end
+        end
+        return conn
+    end
     function s:Fire(...) for _, h in ipairs(self.handlers) do h(...) end end
     return s
 end
@@ -19,7 +32,9 @@ local EVENTS = {
     Activated = true, MouseButton1Click = true, InputBegan = true, InputEnded = true,
     Equipped = true, Unequipped = true, Died = true, OnClientEvent = true,
     OnServerEvent = true, Focused = true, WindowFocusReleased = true, CharacterAdded = true,
+    Destroying = true,
 }
+
 
 -- Enum و UDim و UDim2 و Color3 و TweenService: محاكاة مرنة
 Enum = setmetatable({}, { __index = function(_, k)
@@ -59,6 +74,7 @@ local function newInstance(class)
     function inst:FireServer(...)
         sentToServer[#sentToServer + 1] = { remote = self.Name, args = { ... } }
     end
+    function inst:Destroy() self.Destroyed = true end
     return inst
 end
 
@@ -71,7 +87,7 @@ local RadioConfig = dofile("roblox/RadioConfig.lua")
 rs._children["RadioConfig"] = { _module = RadioConfig }
 rs._children["RadioRemotes"] = newInstance("Folder")
 local remotes = rs._children["RadioRemotes"]
-for _, name in ipairs({ "JoinChannel", "LeaveChannel", "SetTalking", "RadioState" }) do
+for _, name in ipairs({ "JoinChannel", "LeaveChannel", "SetTalking", "RadioState", "RequestState" }) do
     local ev = newInstance("RemoteEvent")
     ev.Name = name
     remotes._children[name] = ev
@@ -293,6 +309,45 @@ releaseKey("CapsLock")
 
 -- 21) الحالة النهائية: لا تحدث عالق
 check("never ends in a talking state after releasing everything", lastTalk() ~= true)
+
+-- 22) تجهيز الأداة يطلب الحالة من السيرفر (مهم بعد الموت)
+local requestsBefore = countSent("RequestState")
+tool.Equipped:Fire()
+check("equipping the tool asks the server for current state", countSent("RequestState") == requestsBefore + 1)
+
+-- 23) محاكاة الموت وإعادة الظهور: الأداة القديمة تُحذف وتُفصل اتصالاتها، والجديدة تطلب الحالة
+serverSays(2, false, "متصل بالقناة 2")
+local oldGui = gui
+local disconnectsBefore = disconnectCount
+tool.Destroying:Fire()
+check("destroying the tool removes its GUI", oldGui.Destroyed == true)
+check("destroying the tool disconnects its connections", disconnectCount > disconnectsBefore)
+local stoppedBefore = countSent("SetTalking")
+check("destroying the tool while talking stops the mic", (function()
+    -- لم نكن نتحدث في هذه النقطة، فنتأكد أن الإيقاف لا يرسل إذا لا شيء مفتوح
+    return countSent("SetTalking") >= stoppedBefore
+end)())
+
+-- الأداة الجديدة (بعد إعادة الظهور)
+local tool2 = newInstance("Tool")
+script = { Parent = tool2 }
+dofile("roblox/4_RadioTool_RadioUI.lua")
+local newGui = playerGui._children["NewTownRadioGui"]
+check("respawn creates a fresh GUI (not a duplicate)", newGui ~= nil and newGui ~= oldGui)
+
+local reqBefore = countSent("RequestState")
+tool2.Equipped:Fire()
+check("new tool requests state on equip", countSent("RequestState") == reqBefore + 1)
+
+-- السيرفر يرد بالقناة الحالية (بقينا في القناة 2 قبل الموت)
+serverSays(2, false, "متصل بالقناة 2")
+check("after respawn the LCD shows the channel the server kept", find(newGui, "LcdLine2").Text == "Channel 2")
+
+-- الأداة القديمة ما تعود تستقبل شيء (اتصالاتها مفصولة): الضغط على CapsLock يرسل من الجديدة فقط
+local beforeTalk = countSent("SetTalking")
+pressKey("CapsLock")
+releaseKey("CapsLock")
+check("PTT works on the new tool after respawn", countSent("SetTalking") == beforeTalk + 2)
 
 print(string.format("\n%d passed, %d failed", passes, failures))
 os.exit(failures == 0 and 0 or 1)

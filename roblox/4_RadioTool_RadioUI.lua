@@ -28,6 +28,14 @@ local JoinChannelEvent = remotes:WaitForChild("JoinChannel")
 local LeaveChannelEvent = remotes:WaitForChild("LeaveChannel")
 local SetTalkingEvent = remotes:WaitForChild("SetTalking")
 local RadioStateEvent = remotes:WaitForChild("RadioState")
+local RequestStateEvent = remotes:WaitForChild("RequestState")
+
+-- كل الاتصالات تُحفظ هنا، وتُفصل عند حذف الأداة (عشان ما تتكرر مع كل موت/إعادة ظهور)
+local connections = {}
+local function track(connection)
+    connections[#connections + 1] = connection
+    return connection
+end
 
 -- ============ الألوان ============
 local BODY = Color3.fromRGB(24, 24, 27)
@@ -348,16 +356,16 @@ local function updateTalkVisuals()
     end
 end
 
-talkButton.InputBegan:Connect(function(input)
+track(talkButton.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1
         or input.UserInputType == Enum.UserInputType.Touch then
         buttonTalking = true
         syncTalk()
     end
-end)
+end))
 
 -- الرفع في أي مكان يوقف التحدث (مهم إذا ترك الإصبع الزر)
-UserInputService.InputEnded:Connect(function(input)
+track(UserInputService.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1
         or input.UserInputType == Enum.UserInputType.Touch then
         if buttonTalking then
@@ -365,28 +373,28 @@ UserInputService.InputEnded:Connect(function(input)
             syncTalk()
         end
     end
-end)
+end))
 
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
+track(UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed or not equipped then return end
     if input.KeyCode == RadioConfig.PTT_KEY then
         keyTalking = true
         syncTalk()
     end
-end)
+end))
 
-UserInputService.InputEnded:Connect(function(input)
+track(UserInputService.InputEnded:Connect(function(input)
     if input.KeyCode == RadioConfig.PTT_KEY and keyTalking then
         keyTalking = false
         syncTalk()
     end
-end)
+end))
 
 -- خروج التركيز من النافذة يوقف التحدث حتى لا يبقى المايك مفتوحاً
-UserInputService.WindowFocusReleased:Connect(forceStopTalk)
+track(UserInputService.WindowFocusReleased:Connect(forceStopTalk))
 
 -- ============ ردود السيرفر ============
-RadioStateEvent.OnClientEvent:Connect(function(channel, talking, message)
+track(RadioStateEvent.OnClientEvent:Connect(function(channel, talking, message)
     pendingJoin = false
     pendingToken = pendingToken + 1 -- يلغي مؤقت الأمان
 
@@ -415,7 +423,7 @@ RadioStateEvent.OnClientEvent:Connect(function(channel, talking, message)
 
     updateScreen()
     updateTalkVisuals()
-end)
+end))
 
 -- ============ إظهار الواجهة مع الأداة ============
 local function onEquipped()
@@ -423,6 +431,8 @@ local function onEquipped()
     gui.Enabled = true
     updateScreen()
     updateTalkVisuals()
+    -- نسأل السيرفر عن حالتنا: لو مت وأعيد الظهور، السيرفر ممكن يكون حافظ القناة
+    RequestStateEvent:FireServer()
 end
 
 local function onUnequipped()
@@ -431,23 +441,33 @@ local function onUnequipped()
     forceStopTalk()
 end
 
-tool.Equipped:Connect(onEquipped)
-tool.Unequipped:Connect(onUnequipped)
+track(tool.Equipped:Connect(onEquipped))
+track(tool.Unequipped:Connect(onUnequipped))
 
 -- عند الموت نوقف التحدث ونخفي الجهاز
 local function onCharacter(character)
     local humanoid = character:WaitForChild("Humanoid", 10)
     if humanoid then
-        humanoid.Died:Connect(function()
+        track(humanoid.Died:Connect(function()
             forceStopTalk()
             gui.Enabled = false
             equipped = false
-        end)
+        end))
     end
 end
 
 if player.Character then onCharacter(player.Character) end
-player.CharacterAdded:Connect(onCharacter)
+track(player.CharacterAdded:Connect(onCharacter))
+
+-- عند حذف الأداة (موت/إعادة ظهور/حذف): نفصل كل الاتصالات ونحذف الواجهة
+track(tool.Destroying:Connect(function()
+    forceStopTalk()
+    for _, c in ipairs(connections) do
+        pcall(function() c:Disconnect() end)
+    end
+    connections = {}
+    gui:Destroy()
+end))
 
 updateScreen()
 updateTalkVisuals()

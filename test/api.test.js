@@ -311,6 +311,136 @@ describe('radio state mirroring', () => {
   });
 });
 
+describe('radio channels from the website', () => {
+  before(() => start());
+  after(() => stop());
+
+  const post = (path, body) => fetch(`${base}${path}`, {
+    method: 'POST', headers: gameHeaders, body: JSON.stringify(body),
+  });
+  const setTeam = (userId, team) => post('/api/radio/team', { userId, team });
+  const radioMsgs = (state, from) => state.messages.slice(from)
+    .filter((m) => m.type === 'radio_state' || m.type === 'radio_error');
+
+  // يرسل رسالة ويرجّع أول رد جديد بعدها فقط (مو الرسائل القديمة)
+  async function send(state, msg) {
+    const from = state.messages.length;
+    state.ws.send(JSON.stringify(msg));
+    await waitFor(() => radioMsgs(state, from).length > 0);
+    return radioMsgs(state, from).at(-1);
+  }
+
+  test('channel list exposes rules to the website', async () => {
+    const data = await (await fetch(`${base}/api/radio/channels`)).json();
+    assert.equal(data.max, 20);
+    assert.equal(data.channels.length, 20);
+    assert.deepEqual(data.channels[0], { channel: 1, teams: ['Police'] });
+    assert.equal(data.channels[5].teams, null); // القناة 6 مفتوحة
+  });
+
+  test('a player can only join channels allowed for their team', async () => {
+    const cop = await createLink(901, 'Cop');
+    const civ = await createLink(902, 'Civ');
+    const copWs = await openWs(cookieFrom(await activate(cop.token)));
+    const civWs = await openWs(cookieFrom(await activate(civ.token)));
+    await setTeam(901, 'Police');
+    await setTeam(902, 'Civilian');
+
+    const copState = await send(copWs, { type: 'radio_join', channel: 2 });
+    assert.equal(copState.type, 'radio_state');
+    assert.equal(copState.channel, 2);
+
+    const denied = await send(civWs, { type: 'radio_join', channel: 2 });
+    assert.equal(denied.type, 'radio_error');
+    assert.equal(denied.message, 'ما عندك صلاحية للقناة 2');
+
+    const open = await send(civWs, { type: 'radio_join', channel: 6 });
+    assert.equal(open.type, 'radio_state');
+    assert.equal(open.channel, 6);
+
+    copWs.ws.close(); civWs.ws.close();
+  });
+
+  test('every invalid channel number is rejected', async () => {
+    const p = await createLink(903, 'Invalid');
+    const { ws, messages } = await openWs(cookieFrom(await activate(p.token)));
+    const state = { ws, messages };
+    for (const bad of [0, 21, -1, 2.5, 'police', null]) {
+      const reply = await send(state, { type: 'radio_join', channel: bad });
+      assert.equal(reply.type, 'radio_error', `value ${JSON.stringify(bad)} should be rejected`);
+      assert.equal(reply.message, 'رقم القناة غير صحيح');
+    }
+    ws.close();
+  });
+
+  test('a player without a known team gets only open channels', async () => {
+    const p = await createLink(908, 'NoTeam');
+    const state = await openWs(cookieFrom(await activate(p.token)));
+    const denied = await send(state, { type: 'radio_join', channel: 4 });
+    assert.equal(denied.type, 'radio_error');
+    const open = await send(state, { type: 'radio_join', channel: 6 });
+    assert.equal(open.channel, 6);
+    state.ws.close();
+  });
+
+  test('team change removes the player from a restricted channel', async () => {
+    const p = await createLink(904, 'Mover');
+    const state = await openWs(cookieFrom(await activate(p.token)));
+    await setTeam(904, 'Police');
+    await send(state, { type: 'radio_join', channel: 1 });
+
+    const from = state.messages.length;
+    assert.equal((await setTeam(904, 'Civilian')).status, 200);
+    await waitFor(() => radioMsgs(state, from).some((m) => m.channel === null));
+    const last = radioMsgs(state, from).at(-1);
+    assert.equal(last.channel, null);
+    assert.equal(last.message, 'تم إخراجك من القناة لأن تيمك تغيّر');
+    state.ws.close();
+  });
+
+  test('team change keeps the player in an open channel', async () => {
+    const p = await createLink(905, 'Open');
+    const state = await openWs(cookieFrom(await activate(p.token)));
+    await setTeam(905, 'Police');
+    await send(state, { type: 'radio_join', channel: 7 });
+
+    const from = state.messages.length;
+    await setTeam(905, 'Justice');
+    await new Promise((r) => setTimeout(r, 100));
+    assert.equal(radioMsgs(state, from).length, 0, 'no channel change message expected');
+    state.ws.close();
+  });
+
+  test('talk requires a channel; leave clears it', async () => {
+    const p = await createLink(906, 'Talker');
+    const state = await openWs(cookieFrom(await activate(p.token)));
+    await setTeam(906, 'Police');
+
+    const refused = await send(state, { type: 'radio_talk', talking: true });
+    assert.equal(refused.type, 'radio_error');
+    assert.equal(refused.message, 'اختر قناة أولاً');
+
+    await send(state, { type: 'radio_join', channel: 3 });
+    const talking = await send(state, { type: 'radio_talk', talking: true });
+    assert.equal(talking.channel, 3);
+    assert.equal(talking.talking, true);
+
+    const left = await send(state, { type: 'radio_leave' });
+    assert.equal(left.channel, null);
+    assert.equal(left.talking, false);
+    state.ws.close();
+  });
+
+  test('bad team payloads are rejected', async () => {
+    const p = await createLink(907, 'Bad');
+    await activate(p.token);
+    assert.equal((await setTeam(907, '')).status, 400);
+    assert.equal((await setTeam(907, 'x'.repeat(41))).status, 400);
+    assert.equal((await setTeam(907, 42)).status, 400);
+    assert.equal((await setTeam(98765, 'Police')).status, 404);
+  });
+});
+
 describe('secrets and logs', () => {
   before(() => start());
   after(() => stop());

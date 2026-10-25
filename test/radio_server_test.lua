@@ -70,6 +70,16 @@ rs._children["RadioConfig"] = { _module = RadioConfigModule }
 local playersSvc = { PlayerAdded = signal(), PlayerRemoving = signal() }
 function playersSvc:GetPlayers() return {} end
 
+-- أسماء التيمات الموجودة في اللعبة (يمكن تغييرها قبل التحميل لاختبار التحذير)
+-- عمداً بدون "Justice" لنختبر تحذير التيم الناقص (القناة 5 غير مستخدمة في باقي الاختبارات)
+local existingTeamNames = MOCK_TEAM_NAMES or { "Police", "EMS" }
+local teamsSvc = {}
+function teamsSvc:GetTeams()
+    local list = {}
+    for _, name in ipairs(existingTeamNames) do list[#list + 1] = { Name = name } end
+    return list
+end
+
 local httpSvc = {}
 function httpSvc:JSONEncode(t) return t end
 function httpSvc:RequestAsync(req)
@@ -81,6 +91,7 @@ local services = {
     Players = playersSvc,
     ReplicatedStorage = rs,
     HttpService = httpSvc,
+    Teams = teamsSvc,
 }
 game = { GetService = function(_, name) return services[name] end }
 
@@ -97,6 +108,8 @@ dofile("roblox/3_ServerScriptService_RadioManager.lua")
 local remotes = rs._children["RadioRemotes"]
 assert(remotes, "RadioRemotes folder not created")
 local JoinChannel = remotes._children["JoinChannel"]
+local RequestState = remotes._children["RequestState"]
+local RadioState = remotes._children["RadioState"]
 local LeaveChannel = remotes._children["LeaveChannel"]
 local SetTalking = remotes._children["SetTalking"]
 
@@ -250,7 +263,33 @@ m = lastMessage(medic)
 check("leave channel clears channel", m and m[1] == nil and m[3] == "خرجت من القناة")
 
 -- 12) لا أخطاء تحذير غير متوقعة
-check("no unexpected backend warnings", #warnings == 0)
+local backendWarnings = 0
+for _, w in ipairs(warnings) do
+    if not w:find("التيم") then backendWarnings = backendWarnings + 1 end
+end
+check("no unexpected backend warnings", backendWarnings == 0)
+
+-- 13) طلب الحالة بعد إعادة الظهور: السيرفر يرجّع القناة الحالية
+busyWait(0.6)
+JoinChannel.OnServerEvent:Fire(civil, 6)
+fired = {}
+RequestState.OnServerEvent:Fire(civil)
+m = lastMessage(civil)
+check("RequestState returns current channel after respawn", m and m[1] == 6 and m[2] == false)
+local fresh = makePlayer(6, nil) -- لم ينضم لأي قناة
+RequestState.OnServerEvent:Fire(fresh)
+check("RequestState for player with no channel returns nil", (function()
+    local r = lastMessage(fresh)
+    return r and r[1] == nil and r[3] == "غير متصل"
+end)())
+
+-- 14) تحذير التيمات الناقصة (في سكربت منفصل بتيمات ناقصة)
+check("team-name warning is shown for a missing team (Justice)", (function()
+    for _, w in ipairs(warnings) do
+        if w:find("Justice") and w:find("غير موجود") then return true end
+    end
+    return false
+end)())
 
 print(string.format("\n%d passed, %d failed", passes, failures))
 os.exit(failures == 0 and 0 or 1)

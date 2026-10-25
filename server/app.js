@@ -12,12 +12,12 @@ import express from 'express';
 import rateLimit from 'express-rate-limit';
 import { WebSocketServer, WebSocket } from 'ws';
 import { createStore, SESSION_COOKIE_TTL_MS } from './store.js';
+import { MAX_RADIO_CHANNEL, channelAllowed, isValidChannel, publicChannelList } from './radio-rules.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.resolve(__dirname, '..', 'public');
 
 export const NEARBY_RADIUS = 60;
-export const MAX_RADIO_CHANNEL = 20; // يطابق RadioConfig.MAX_CHANNEL في Roblox
 const COOKIE_NAME = 'nt_sid';
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{16,64}$/;
 
@@ -128,6 +128,13 @@ export function createVoiceServer(options = {}) {
     for (const s of store.allSessions()) if (s.linked) sendNearby(s);
   }
 
+  // تغيير حالة الراديو للجلسة وإرسالها للموقع (مصدر واحد لكل التغييرات)
+  function setRadio(s, channel, talking, message) {
+    s.radioChannel = channel;
+    s.radioTalking = channel === null ? false : talking;
+    send(s, { type: 'radio_state', channel: s.radioChannel, talking: s.radioTalking, message: message || '' });
+  }
+
   function linkUrl(req, token) {
     const base = publicBaseUrl || `${req.protocol}://${req.get('host')}`;
     return `${base}/a/${token}`;
@@ -142,6 +149,11 @@ export function createVoiceServer(options = {}) {
 
   api.get('/health', (_req, res) => {
     res.json({ ok: true });
+  });
+
+  // قائمة القنوات وتيماتها (للعرض فقط)
+  api.get('/radio/channels', (_req, res) => {
+    res.json({ max: MAX_RADIO_CHANNEL, channels: publicChannelList() });
   });
 
   // هل المتصفح مربوط الآن؟ (يستخدمها الموقع عند فتح الصفحة)
@@ -243,6 +255,28 @@ export function createVoiceServer(options = {}) {
     res.json({ ok: true });
   });
 
+  // Roblox يرسل تيم اللاعب. إذا تغيّر وما عاد مسموحاً له بالقناة الحالية، نخرجه منها.
+  api.post('/radio/team', requireGameKey, (req, res) => {
+    const { userId } = req.body ?? {};
+    const team = req.body?.team ?? null;
+    const validTeam = team === null || (typeof team === 'string' && team.length > 0 && team.length <= 40);
+    if (!isUserId(userId) || !validTeam) {
+      res.status(400).json({ error: 'invalid input' });
+      return;
+    }
+    const s = store.getSession(userId);
+    if (!s) {
+      res.status(404).json({ error: 'session not found' });
+      return;
+    }
+    s.team = team;
+    s.lastSeen = Date.now();
+    if (s.radioChannel !== null && !channelAllowed(s.radioChannel, team)) {
+      setRadio(s, null, false, 'تم إخراجك من القناة لأن تيمك تغيّر');
+    }
+    res.json({ ok: true });
+  });
+
   // حالة الراديو: يرسلها سكربت Roblox بعد كل قرار (انضمام/خروج/تحدث).
   // السيرفر لا يقرر الصلاحيات، فقط يعكس القرار للموقع.
   api.post('/radio/state', requireGameKey, (req, res) => {
@@ -330,6 +364,34 @@ export function createVoiceServer(options = {}) {
       let msg;
       try { msg = JSON.parse(raw.toString()); } catch { return; }
       if (!msg || typeof msg !== 'object') return;
+
+      // ---------- الراديو من الموقع (السيرفر يتحقق من التيم دائماً) ----------
+      if (msg.type === 'radio_join') {
+        if (!isValidChannel(msg.channel)) {
+          send(s, { type: 'radio_error', message: 'رقم القناة غير صحيح' });
+          return;
+        }
+        if (!channelAllowed(msg.channel, s.team)) {
+          send(s, { type: 'radio_error', message: `ما عندك صلاحية للقناة ${msg.channel}` });
+          return;
+        }
+        setRadio(s, msg.channel, false, `متصل بالقناة ${msg.channel}`);
+        return;
+      }
+
+      if (msg.type === 'radio_leave') {
+        setRadio(s, null, false, 'خرجت من القناة');
+        return;
+      }
+
+      if (msg.type === 'radio_talk' && typeof msg.talking === 'boolean') {
+        if (s.radioChannel === null) {
+          if (msg.talking) send(s, { type: 'radio_error', message: 'اختر قناة أولاً' });
+          return;
+        }
+        setRadio(s, s.radioChannel, msg.talking, '');
+        return;
+      }
 
       if (msg.type === 'mic_toggle' && typeof msg.muted === 'boolean') {
         s.muted = msg.muted; // Roblox يسحبها مع أقرب تحديث موقع

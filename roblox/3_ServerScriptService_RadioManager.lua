@@ -14,6 +14,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
+local Teams = game:GetService("Teams")
 
 local RadioConfig = require(ReplicatedStorage:WaitForChild("RadioConfig"))
 
@@ -47,6 +48,7 @@ local JoinChannelEvent = getOrCreateRemote("JoinChannel")   -- كلاينت -> �
 local LeaveChannelEvent = getOrCreateRemote("LeaveChannel") -- كلاينت -> سيرفر
 local SetTalkingEvent = getOrCreateRemote("SetTalking")     -- كلاينت -> سيرفر: true/false
 local RadioStateEvent = getOrCreateRemote("RadioState")     -- سيرفر -> كلاينت: channel, talking, message
+local RequestStateEvent = getOrCreateRemote("RequestState") -- كلاينت -> سيرفر: "وش حالتي الحالية؟" (عند تجهيز الأداة بعد الموت)
 
 -- radioStates[player] = { channel = nil|number, talking = bool, lastJoin = 0, lastTalk = 0 }
 local radioStates = {}
@@ -194,6 +196,34 @@ SetTalkingEvent.OnServerEvent:Connect(function(player, talking)
 
     if st.talking then return end
     applyState(player, st.channel, true, "")
+end)
+
+-- ============ تحقق من أسماء التيمات (يظهر في Output إذا فيه خطأ) ============
+local function checkTeamNames()
+    local existing = {}
+    for _, team in ipairs(Teams:GetTeams()) do
+        existing[team.Name] = true
+    end
+    for channel, rule in pairs(RadioConfig.CHANNELS) do
+        for _, teamName in ipairs(rule.teams) do
+            if not existing[teamName] then
+                warn("[RadioManager] التيم '" .. teamName .. "' (للقناة " .. tostring(channel)
+                    .. ") غير موجود في Teams. غيّره في RadioConfig ليطابق اسمه بالضبط.")
+            end
+        end
+    end
+end
+
+task.spawn(function()
+    task.wait(2) -- ننتظر تحميل التيمات
+    checkTeamNames()
+end)
+
+RequestStateEvent.OnServerEvent:Connect(function(player)
+    local st = radioStates[player]
+    if not st then return end
+    local message = st.channel and ("متصل بالقناة " .. tostring(st.channel)) or "غير متصل"
+    RadioStateEvent:FireClient(player, st.channel, st.talking, message)
 end)
 
 -- ============ تغيير التيم أثناء اللعب ============

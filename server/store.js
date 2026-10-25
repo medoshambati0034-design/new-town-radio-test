@@ -54,7 +54,8 @@ export function createStore({ linkTtlMs = 5 * 60_000, now = () => Date.now() } =
         sid: null,
         ws: null,
         lastSeen: now(),
-        radioChannel: null,   // يحدده سكربت Roblox فقط
+        team: null,           // اسم تيم اللاعب، يرسله Roblox
+        radioChannel: null,   // القناة الحالية (يحددها السيرفر بعد التحقق)
         radioTalking: false,
       };
       sessions.set(userId, session);
