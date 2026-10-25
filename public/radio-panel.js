@@ -60,6 +60,10 @@
     var current = el('div', 'radio-current', 'غير متصل');
     panel.appendChild(current);
 
+    // يوضح للاعب هل وصل تيمه من اللعبة (إذا لا، القنوات المقيدة تبقى مقفلة)
+    var teamLine = el('div', 'radio-team', '');
+    panel.appendChild(teamLine);
+
     var row = el('div', 'radio-input-row');
     var input = el('input', 'radio-input');
     input.type = 'text';
@@ -105,6 +109,10 @@
     }
 
     function render() {
+      teamLine.textContent = state.team
+        ? ('تيمك: ' + state.team)
+        : 'ما وصل تيمك من اللعبة، القنوات المقيدة مقفلة (افتح الماب وتأكد من تحديث السكربتات)';
+      teamLine.className = 'radio-team' + (state.team ? '' : ' warn');
       current.textContent = state.channel ? ('متصل بالقناة ' + state.channel) : 'غير متصل';
       current.className = 'radio-current' + (state.channel ? ' on' : '');
       leaveBtn.disabled = !state.channel || state.pending;
