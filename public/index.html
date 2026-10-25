@@ -569,6 +569,21 @@
     }
   }
   .activate-user{margin:14px 0;padding:12px 14px;border-radius:12px;background:rgba(255,120,17,.16);color:#ffd9b8;font-weight:600;text-align:center;}
+  /* ---------- الراديو ---------- */
+  .radio-panel{margin-top:16px;}
+  .radio-current{font-weight:700;padding:10px 14px;border-radius:12px;background:rgba(255,255,255,.04);margin-bottom:12px;}
+  .radio-current.on{background:rgba(255,120,17,.16);color:#ffd9b8;}
+  .radio-input-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .radio-input{flex:1;min-width:120px;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:#120e0b;color:#fff;font-size:18px;text-align:center;letter-spacing:2px;}
+  .radio-btn{padding:10px 16px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:transparent;color:#fff;font-weight:700;cursor:pointer;}
+  .radio-btn.primary{background:#ff7811;border-color:#ff7811;color:#1a1009;}
+  .radio-btn:disabled,.radio-ch:disabled{opacity:.45;cursor:not-allowed;}
+  .radio-status{min-height:20px;margin:10px 0;font-size:13px;color:#cfc4ba;}
+  .radio-status.err{color:#ff8b82;}
+  .radio-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:8px;margin-top:6px;}
+  .radio-ch{padding:12px 0;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:#1e1814;color:#fff;font-weight:700;cursor:pointer;}
+  .radio-ch.active{background:#ff7811;color:#1a1009;border-color:#ff7811;}
+  .radio-ch.locked{color:#6f655d;background:#15110e;}
 </style>
 </head>
 <body>
@@ -669,10 +684,13 @@
         </div>
       </div>
     </div>
+
+    <div id="radio-panel-root"></div>
   </div>
 
 </div>
 
+<script src="/radio-panel.js"></script>
 <script>
 /* =========================================================================
    ProxiTalk — منطق الموقع (نسخة معدّلة للجوال)
@@ -768,6 +786,7 @@ const ConnectionManager = {
         this.connected = true;
         this.myUserId = msg.userId;
         showDashboard(msg.username, msg.userId);
+        if (typeof radioPanel !== 'undefined') radioPanel.setTeam(msg.team);
         // نزامن حالة المايك الحالية مع السيرفر (مهم بعد إعادة الاتصال)
         this.send({ type: 'mic_toggle', muted: VoiceManager.muted });
         break;
@@ -776,6 +795,12 @@ const ConnectionManager = {
         break;
       case 'mic_state':
         VoiceManager.setMuted(msg.muted, true);
+        break;
+      case 'radio_state':
+        if (typeof radioPanel !== 'undefined') radioPanel.onState(msg);
+        break;
+      case 'radio_error':
+        if (typeof radioPanel !== 'undefined') radioPanel.onError(msg);
         break;
       case 'webrtc_signal':
         VoiceManager.handleSignal(msg.from, msg.signal);
@@ -1139,6 +1164,7 @@ disconnectBtn.addEventListener('click', () => {
   ConnectionManager.disconnect();
   VoiceManager.disconnectAll();
   UI.knownNearbyIds = new Set();
+  if (typeof radioPanel !== 'undefined') radioPanel.reset();
   fetch('/api/session/unlink', { method: 'POST', credentials: 'same-origin' }).catch(() => {});
   showActivateScreen('تم فصل الربط. ارجع للعبة وافتح الرابط الجديد لتفعيله مرة ثانية.', '');
 });
@@ -1269,6 +1295,12 @@ async function bootstrap() {
     showActivateScreen('تعذّر الوصول للسيرفر، حدّث الصفحة وحاول مرة ثانية.', 'err');
   }
 }
+
+// قسم الراديو: يرسل الطلبات عبر نفس اتصال الـ WebSocket
+const radioPanel = RadioPanel.create({
+  container: document.getElementById('radio-panel-root'),
+  send: (obj) => ConnectionManager.send(obj),
+});
 
 bootstrap();
 </script>

@@ -10,11 +10,14 @@
   },
   "scripts": {
     "start": "node server/server.js",
-    "test": "node --test test/api.test.js && lua5.4 test/radio_server_test.lua && lua5.4 test/radio_ui_test.lua"
+    "test": "node --test test/api.test.js test/radio_panel.test.js && lua5.4 test/radio_server_test.lua && lua5.4 test/radio_ui_test.lua"
   },
   "dependencies": {
     "express": "^5.3.0",
     "express-rate-limit": "^7.5.1",
     "ws": "^8.22.0"
+  },
+  "devDependencies": {
+    "jsdom": "^26.1.0"
   }
 }

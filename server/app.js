@@ -355,7 +355,7 @@ export function createVoiceServer(options = {}) {
     ws.isAlive = true;
     ws.on('pong', () => { ws.isAlive = true; });
 
-    send(s, { type: 'linked', username: s.username, userId: s.userId });
+    send(s, { type: 'linked', username: s.username, userId: s.userId, team: s.team });
     send(s, { type: 'radio_state', channel: s.radioChannel, talking: s.radioTalking });
     sendNearby(s);
 

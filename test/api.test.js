@@ -330,6 +330,17 @@ describe('radio channels from the website', () => {
     return radioMsgs(state, from).at(-1);
   }
 
+  test('linked message tells the website the player team', async () => {
+    const p = await createLink(909, 'Teamed');
+    await setTeam(909, 'EMS');
+    const activation = await activate(p.token);
+    const state = await openWs(cookieFrom(activation));
+    await waitFor(() => state.messages.some((m) => m.type === 'linked'));
+    const linked = state.messages.find((m) => m.type === 'linked');
+    assert.equal(linked.team, 'EMS');
+    state.ws.close();
+  });
+
   test('channel list exposes rules to the website', async () => {
     const data = await (await fetch(`${base}/api/radio/channels`)).json();
     assert.equal(data.max, 20);
