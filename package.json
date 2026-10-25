@@ -1,0 +1,20 @@
+{
+  "name": "new-town-voice",
+  "version": "2.0.0",
+  "private": true,
+  "description": "New Town Voice: link-based activation between Roblox and a browser voice page",
+  "type": "module",
+  "main": "server/server.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server/server.js",
+    "test": "node --test test/api.test.js && lua5.4 test/radio_server_test.lua && lua5.4 test/radio_ui_test.lua"
+  },
+  "dependencies": {
+    "express": "^5.3.0",
+    "express-rate-limit": "^7.5.1",
+    "ws": "^8.22.0"
+  }
+}
