@@ -33,7 +33,7 @@ export function createStore({ linkTtlMs = 5 * 60_000, now = () => Date.now() } =
   }
 
   // يُنشئ رابطاً جديداً للاعب. أي رابط قديم غير مستخدم يصير باطلاً.
-  function createLink(userId, username) {
+  function createLink(userId, username, team = null) {
     for (const [hash, link] of links) {
       if (link.userId === userId && !link.usedAt) links.delete(hash);
     }
@@ -61,6 +61,7 @@ export function createStore({ linkTtlMs = 5 * 60_000, now = () => Date.now() } =
       sessions.set(userId, session);
     }
     session.username = username;
+    session.team = team;
     session.lastSeen = now();
 
     const token = randomId(16); // 128 بت عشوائي

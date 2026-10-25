@@ -110,6 +110,7 @@ local function requestLink(player, data)
     local res, status = postToBackend("/api/link", {
         userId = player.UserId,
         username = player.Name,
+        team = player.Team and player.Team.Name or nil, -- يتحدث مع تغيير التيم عبر RadioManager
     })
     if res and type(res.url) == "string" then
         data.url = res.url
@@ -189,6 +190,15 @@ local function onPlayerAdded(player)
                             and os.clock() - data.lastToggle > LOCAL_TOGGLE_GRACE then
                             data.muted = res.muted
                             MicStateEvent:FireClient(player, data.muted)
+                        end
+
+                        -- حالة الراديو (القناة اللي دخلها من الموقع) تُنشر للزر العائم
+                        if player:GetAttribute("RadioChannel") ~= res.radioChannel then
+                            player:SetAttribute("RadioChannel", res.radioChannel)
+                        end
+                        local talkingNow = res.radioTalking == true
+                        if player:GetAttribute("RadioTalking") ~= talkingNow then
+                            player:SetAttribute("RadioTalking", talkingNow)
                         end
                     end
                 end

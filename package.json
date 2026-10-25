@@ -10,7 +10,7 @@
   },
   "scripts": {
     "start": "node server/server.js",
-    "test": "node --test test/api.test.js test/radio_panel.test.js && lua5.4 test/radio_server_test.lua && lua5.4 test/radio_ui_test.lua"
+    "test": "node --test test/api.test.js test/radio_panel.test.js && lua5.4 test/radio_manager_test.lua && lua5.4 test/radio_float_test.lua"
   },
   "dependencies": {
     "express": "^5.3.0",

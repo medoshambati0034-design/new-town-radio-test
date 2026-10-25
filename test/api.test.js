@@ -341,6 +341,56 @@ describe('radio channels from the website', () => {
     state.ws.close();
   });
 
+  test('team sent with the link is known as soon as the link is issued', async () => {
+    const res = await fetch(`${base}/api/link`, {
+      method: 'POST', headers: gameHeaders,
+      body: JSON.stringify({ userId: 910, username: 'Early', team: 'Police' }),
+    });
+    assert.equal(res.status, 200);
+    const token = (await res.json()).url.split('/a/')[1];
+    const state = await openWs(cookieFrom(await activate(token)));
+    await waitFor(() => state.messages.some((m) => m.type === 'linked'));
+    assert.equal(state.messages.find((m) => m.type === 'linked').team, 'Police');
+    state.ws.close();
+  });
+
+  test('invalid team on link request is rejected', async () => {
+    const res = await fetch(`${base}/api/link`, {
+      method: 'POST', headers: gameHeaders,
+      body: JSON.stringify({ userId: 911, username: 'Bad', team: 42 }),
+    });
+    assert.equal(res.status, 400);
+  });
+
+  test('Roblox talk button works only inside a channel joined from the website', async () => {
+    const p = await createLink(912, 'RbxTalk');
+    const cookie = cookieFrom(await activate(p.token));
+    await setTeam(912, 'Police');
+    const talk = (talking) => post('/api/radio/talk', { userId: 912, talking }).then((r) => r.json());
+
+    assert.deepEqual(await talk(true), { ok: true, channel: null, talking: false });
+
+    const state = await openWs(cookie);
+    await send(state, { type: 'radio_join', channel: 2 });
+    const started = await talk(true);
+    assert.equal(started.channel, 2);
+    assert.equal(started.talking, true);
+
+    // موقع الراديو يشوف التغيير، و position update يرجّع الحالة لـ Roblox
+    await waitFor(() => state.messages.some((m) => m.type === 'radio_state' && m.talking === true));
+    const pos = await (await post('/api/position/update', { userId: 912, x: 0, y: 0, z: 0 })).json();
+    assert.equal(pos.radioChannel, 2);
+    assert.equal(pos.radioTalking, true);
+
+    assert.equal((await talk(false)).talking, false);
+    state.ws.close();
+  });
+
+  test('talk endpoint rejects unknown players and bad input', async () => {
+    assert.equal((await post('/api/radio/talk', { userId: 98766, talking: true })).status, 404);
+    assert.equal((await post('/api/radio/talk', { userId: 912, talking: 'yes' })).status, 400);
+  });
+
   test('channel list exposes rules to the website', async () => {
     const data = await (await fetch(`${base}/api/radio/channels`)).json();
     assert.equal(data.max, 20);

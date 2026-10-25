@@ -211,11 +211,13 @@ export function createVoiceServer(options = {}) {
   // ---------- Roblox -> السيرفر (محمي بمفتاح API) ----------
   api.post('/link', requireGameKey, (req, res) => {
     const { userId, username } = req.body ?? {};
-    if (!isUserId(userId) || typeof username !== 'string' || !username.trim() || username.length > 50) {
+    const team = req.body?.team ?? null; // اختياري: تيم اللاعب وقت الدخول
+    const validTeam = team === null || (typeof team === 'string' && team.length > 0 && team.length <= 40);
+    if (!isUserId(userId) || typeof username !== 'string' || !username.trim() || username.length > 50 || !validTeam) {
       res.status(400).json({ error: 'invalid input' });
       return;
     }
-    const result = store.createLink(userId, username.trim());
+    const result = store.createLink(userId, username.trim(), team);
     broadcastNearby();
     console.log(`[link] رابط جديد للاعب ${userId}`); // لا نسجّل التوكن أبداً
     res.json({ url: linkUrl(req, result.token), expiresIn: Math.round(result.ttlMs / 1000) });
@@ -235,7 +237,13 @@ export function createVoiceServer(options = {}) {
     s.position = { x, y, z };
     s.lastSeen = Date.now();
     broadcastNearby();
-    res.json({ ok: true, muted: s.muted, linked: s.linked });
+    res.json({
+      ok: true,
+      muted: s.muted,
+      linked: s.linked,
+      radioChannel: s.radioChannel,   // القناة اللي دخلها اللاعب من الموقع
+      radioTalking: s.radioTalking,
+    });
   });
 
   api.post('/mic/toggle', requireGameKey, (req, res) => {
@@ -298,6 +306,25 @@ export function createVoiceServer(options = {}) {
     s.lastSeen = Date.now();
     send(s, { type: 'radio_state', channel: s.radioChannel, talking: s.radioTalking });
     res.json({ ok: true });
+  });
+
+  api.post('/radio/talk', requireGameKey, (req, res) => {
+    const { userId, talking } = req.body ?? {};
+    if (!isUserId(userId) || typeof talking !== 'boolean') {
+      res.status(400).json({ error: 'invalid input' });
+      return;
+    }
+    const s = store.getSession(userId);
+    if (!s) {
+      res.status(404).json({ error: 'session not found' });
+      return;
+    }
+    if (s.radioChannel === null) {
+      res.json({ ok: true, channel: null, talking: false });
+      return;
+    }
+    setRadio(s, s.radioChannel, talking, '');
+    res.json({ ok: true, channel: s.radioChannel, talking: s.radioTalking });
   });
 
   api.post('/session/end', requireGameKey, (req, res) => {

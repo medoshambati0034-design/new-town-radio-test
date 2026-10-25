@@ -93,16 +93,24 @@ npm test
 
 ## نظام الراديو (New Town Radio)
 
-### الملفات
-- `roblox/RadioConfig.lua`: ModuleScript داخل **ReplicatedStorage** باسم `RadioConfig`. يحدد القنوات وأسماء التيمات.
-- `roblox/3_ServerScriptService_RadioManager.lua`: Script داخل **ServerScriptService**. يتحقق من التيم على السيرفر ويرسل القرار للـ Backend.
-- `roblox/4_RadioTool_RadioUI.lua`: LocalScript داخل الأداة **NewTownRadio**.
+### كيف يشتغل
+- **الدخول للقنوات من الموقع فقط.** بعد ربط المايك، يظهر قسم الراديو تحته. والسيرفر يتحقق من التيم دائماً.
+- **Roblox** يرسل تيم اللاعب، ويعرض زر راديو عائم يفتح لوحة فيها القناة الحالية وزر PTT.
+- **زر PTT** يرسل الحالة للسيرفر، والسيرفر يتحقق أن اللاعب داخل قناة قبل ما يسمح بالتحدث.
 
-### الإعداد في Roblox
-1. أنشئ `ModuleScript` في ReplicatedStorage واسمه `RadioConfig` والصق محتوى `RadioConfig.lua`.
-2. عدّل أسماء التيمات في `RadioConfig.CHANNELS` لأسماء التيمات الحقيقية بالضبط.
-3. أنشئ `Script` في ServerScriptService باسم `RadioManager` والصق محتوى ملف السيرفر، وعدّل `BACKEND_URL` و`API_KEY` نفس قيم VoiceLinkManager.
-4. أنشئ `Tool` في StarterPack باسم `NewTownRadio`، وداخله `LocalScript` باسم `RadioUI` والصق محتوى ملف الواجهة.
+### الملفات
+- `roblox/RadioConfig.lua`: ModuleScript داخل **ReplicatedStorage** باسم `RadioConfig`. أسماء التيمات والأزرار المختصرة.
+- `roblox/1_ServerScriptService_VoiceLinkManager.lua`: يرسل التيم عند إنشاء الرابط، وينشر القناة الحالية.
+- `roblox/3_ServerScriptService_RadioManager.lua`: Script داخل **ServerScriptService**. يرسل تغيير التيم، ويمرر PTT.
+- `roblox/5_StarterPlayerScripts_RadioFloat.lua`: LocalScript داخل **StarterPlayerScripts**. الزر العائم واللوحة.
+- `server/radio-rules.js`: قواعد القنوات على السيرفر (المصدر الوحيد للصلاحيات).
+- `public/radio-panel.js`: قسم الراديو في الموقع.
+
+### إعداد Roblox
+1. أنشئ `ModuleScript` في ReplicatedStorage باسم `RadioConfig` والصق فيه محتوى `RadioConfig.lua`، وعدّل أسماء التيمات بالضبط.
+2. أنشئ `Script` في ServerScriptService باسم `RadioManager` والصق فيه ملف السيرفر، وضع `BACKEND_URL` و`API_KEY` نفس قيم VoiceLinkManager.
+3. أنشئ `LocalScript` في StarterPlayerScripts باسم `RadioFloat` والصق فيه ملف الزر العائم.
+4. **احذف الأداة `NewTownRadio` من StarterPack** إذا كانت موجودة. الواجهة القديمة تعتمد على أوامر دخول محذوفة، وتسبب واجهتين. نسختها محفوظة في `deprecated/`.
 
 ### القنوات الافتراضية
 - القنوات 1 و2 و3: تيم الشرطة فقط.
@@ -110,21 +118,14 @@ npm test
 - القناة 5: تيم العدل فقط.
 - القنوات 6 حتى 20: مفتوحة للجميع.
 
-### القواعد الأمنية
-- الصلاحيات تُفحص على السيرفر، والواجهة للعرض فقط.
-- تغيير التيم أثناء القناة يُخرج اللاعب منها فوراً إذا لم يعد مسموحاً له.
-- إيقاف التحدث دائماً مسموح، ولا يُرفض بسبب Rate limit.
-- عند رفع الأداة أو الموت أو فقدان تركيز النافذة، يتوقف التحدث.
-
 ### الاختبارات
 ```bash
 npm test
 ```
-تشمل: اختبارات الـ Backend، واختبار سكربت السيرفر ضد محاكاة Roblox (الصلاحيات والتيمات وRate limit)، واختبار واجهة الأداة (التحدث الآمن).
+تشمل: اختبارات الـ Backend، واختبار قسم الموقع في DOM، واختبار سكربت السيرفر ضد محاكاة Roblox، واختبار الزر العائم.
 
 ### ما لم يُنفذ بعد
-- **الصوت الفعلي للراديو:** هذه الدفعة تنفذ منطق القنوات والصلاحيات وحالة التحدث. نقل الصوت عبر SFU يحتاج اختيار الخدمة (مثل LiveKit) وتنفيذه في المرحلة التالية.
-- **الموقع:** يستقبل حالة الراديو ويعرضها، لكن لا يبث الصوت بعد.
+- **الصوت الفعلي للراديو:** الدخول والصلاحيات وحالة التحدث تشتغل. نقل الصوت بين أعضاء القناة يحتاج الخطوة الجاية (mesh للقنوات الصغيرة أو SFU).
 
 ## النسخ الاحتياطي والاسترجاع
 
