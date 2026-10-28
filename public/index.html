@@ -1,1311 +1,255 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>New Town Voice — مايك القرب</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
-<style>
-  :root{
-    --bg:#0B0E14;
-    --panel:#141821;
-    --panel-2:#1B2130;
-    --line:rgba(255,255,255,0.08);
-    --text:#EAEEF5;
-    --text-dim:#8A93A6;
-    --accent:#5AC8FF;
-    --accent-dim:rgba(90,200,255,0.15);
-    --ok:#3CD97A;
-    --ok-dim:rgba(60,217,122,0.15);
-    --bad:#E5484D;
-    --bad-dim:rgba(229,72,77,0.15);
-  }
 
-  *{box-sizing:border-box; margin:0; padding:0;}
-
-  body{
-    background:
-      radial-gradient(ellipse 900px 500px at 15% -10%, rgba(90,200,255,0.08), transparent),
-      radial-gradient(ellipse 700px 500px at 100% 10%, rgba(60,217,122,0.06), transparent),
-      var(--bg);
-    color:var(--text);
-    font-family:'Inter', sans-serif;
-    min-height:100vh;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    padding:24px;
-  }
-
-  h1,h2,h3, .mono-heading{ font-family:'Space Grotesk', sans-serif; }
-
-  .app{
-    width:100%;
-    max-width:1100px;
-  }
-
-  /* ============ شاشة الربط ============ */
-  #connect-screen{
-    max-width:440px;
-    margin:0 auto;
-    text-align:center;
-  }
-
-  .brand{
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    gap:10px;
-    margin-bottom:36px;
-  }
-  .brand-dot{
-    width:10px; height:10px; border-radius:50%;
-    background:var(--accent);
-    box-shadow:0 0 14px var(--accent);
-  }
-  .brand-name{
-    font-size:20px;
-    font-weight:700;
-    letter-spacing:0.5px;
-  }
-
-  .connect-card{
-    background:var(--panel);
-    border:1px solid var(--line);
-    border-radius:20px;
-    padding:36px 30px;
-  }
-
-  .connect-card h2{
-    font-size:24px;
-    margin-bottom:8px;
-  }
-  .connect-card p{
-    color:var(--text-dim);
-    font-size:14px;
-    line-height:1.6;
-    margin-bottom:28px;
-  }
-
-  .code-input{
-    width:100%;
-    background:var(--panel-2);
-    border:1px solid var(--line);
-    border-radius:14px;
-    padding:18px;
-    text-align:center;
-    font-family:'JetBrains Mono', monospace;
-    font-size:26px;
-    letter-spacing:8px;
-    color:var(--accent);
-    outline:none;
-    text-transform:uppercase;
-    transition:border-color .15s;
-  }
-  .code-input:focus{ border-color:var(--accent); }
-  .code-input::placeholder{ color:#3A4152; letter-spacing:8px; }
-
-  .btn{
-    border:none;
-    border-radius:14px;
-    padding:16px;
-    font-family:'Inter', sans-serif;
-    font-weight:600;
-    font-size:15px;
-    cursor:pointer;
-    width:100%;
-    transition:transform .1s, opacity .15s, background .15s;
-  }
-  .btn:active{ transform:scale(0.98); }
-  .btn:disabled{ opacity:0.5; cursor:not-allowed; }
-
-  .btn-primary{
-    background:var(--accent);
-    color:#06222F;
-    margin-top:16px;
-  }
-  .btn-primary:hover:not(:disabled){ background:#78D4FF; }
-
-  .status-line{
-    margin-top:18px;
-    font-size:13px;
-    color:var(--text-dim);
-    min-height:18px;
-  }
-  .status-line.err{ color:var(--bad); }
-  .status-line.ok{ color:var(--ok); }
-
-  /* ============ لوحة التحكم ============ */
-  #dashboard{ display:none; }
-
-  .topbar{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    margin-bottom:24px;
-  }
-  .topbar-left{ display:flex; align-items:center; gap:12px; }
-  .avatar{
-    width:42px; height:42px;
-    border-radius:12px;
-    background:linear-gradient(145deg, var(--accent), #2E6E8E);
-    display:flex; align-items:center; justify-content:center;
-    font-weight:700; font-size:16px;
-    color:#06222F;
-  }
-  .user-meta .name{ font-weight:600; font-size:15px; }
-  .user-meta .conn-status{
-    font-size:12px; color:var(--text-dim);
-    display:flex; align-items:center; gap:6px;
-  }
-  .conn-dot{
-    width:7px; height:7px; border-radius:50%;
-    background:var(--ok);
-    box-shadow:0 0 8px var(--ok);
-  }
-  .conn-dot.off{ background:var(--bad); box-shadow:0 0 8px var(--bad); }
-
-  .disconnect-btn{
-    background:transparent;
-    border:1px solid var(--line);
-    color:var(--text-dim);
-    padding:9px 16px;
-    border-radius:10px;
-    font-size:13px;
-    cursor:pointer;
-  }
-  .disconnect-btn:hover{ border-color:var(--bad); color:var(--bad); }
-
-  .grid{
-    display:grid;
-    grid-template-columns:1fr 340px;
-    gap:20px;
-  }
-  @media (max-width:820px){
-    .grid{ grid-template-columns:1fr; }
-  }
-
-  .panel{
-    background:var(--panel);
-    border:1px solid var(--line);
-    border-radius:18px;
-    padding:22px;
-  }
-  .panel h3{
-    font-size:15px;
-    margin-bottom:4px;
-  }
-  .panel .sub{
-    font-size:12px;
-    color:var(--text-dim);
-    margin-bottom:18px;
-  }
-
-  /* ---- الرادار ---- */
-  #radar-wrap{
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-  }
-  #radar{
-    width:100%;
-    max-width:340px;
-    aspect-ratio:1/1;
-  }
-  .radar-ring{ fill:none; stroke:var(--line); stroke-width:1; }
-  .radar-sweep{ transform-origin:150px 150px; }
-  .player-dot{ cursor:pointer; }
-  .player-dot circle.core{ fill:var(--accent); }
-  .player-dot text{
-    fill:var(--text-dim);
-    font-size:9px;
-    font-family:'Inter', sans-serif;
-  }
-  .empty-radar-msg{
-    color:var(--text-dim);
-    font-size:13px;
-    text-align:center;
-    margin-top:10px;
-  }
-
-  /* ---- قائمة القريبين ---- */
-  .nearby-list{
-    display:flex;
-    flex-direction:column;
-    gap:10px;
-    margin-top:18px;
-  }
-  .nearby-item{
-    display:flex;
-    align-items:center;
-    gap:12px;
-    background:var(--panel-2);
-    border:1px solid var(--line);
-    border-radius:14px;
-    padding:12px 14px;
-  }
-  .nearby-avatar{
-    width:36px; height:36px;
-    border-radius:10px;
-    background:var(--panel);
-    border:1px solid var(--line);
-    display:flex; align-items:center; justify-content:center;
-    font-size:13px; font-weight:700;
-    color:var(--text-dim);
-    flex-shrink:0;
-    position:relative;
-  }
-  .talk-pulse{
-    position:absolute;
-    inset:-3px;
-    border-radius:12px;
-    border:2px solid var(--ok);
-    opacity:0;
-  }
-  .nearby-avatar.talking .talk-pulse{
-    opacity:1;
-    animation:pulse 1s ease-out infinite;
-  }
-  @keyframes pulse{
-    0%{ box-shadow:0 0 0 0 rgba(60,217,122,0.5); }
-    100%{ box-shadow:0 0 0 8px rgba(60,217,122,0); }
-  }
-
-  .nearby-info{ flex:1; min-width:0; }
-  .nearby-info .name{ font-size:13.5px; font-weight:600; }
-  .nearby-info .dist{ font-size:11.5px; color:var(--text-dim); }
-
-  .vol-slider{
-    width:70px;
-    accent-color:var(--accent);
-  }
-
-  .empty-list{
-    color:var(--text-dim);
-    font-size:13px;
-    text-align:center;
-    padding:30px 10px;
-  }
-
-  /* ---- إعدادات المايك ---- */
-  .mic-toggle{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    background:var(--panel-2);
-    border:1px solid var(--line);
-    border-radius:14px;
-    padding:16px;
-    margin-bottom:16px;
-  }
-  .mic-toggle-label{ display:flex; align-items:center; gap:12px; }
-  .mic-icon-circle{
-    width:44px; height:44px;
-    border-radius:50%;
-    display:flex; align-items:center; justify-content:center;
-    font-size:19px;
-    background:var(--ok-dim);
-    color:var(--ok);
-    transition:background .15s, color .15s;
-  }
-  .mic-icon-circle.muted{ background:var(--bad-dim); color:var(--bad); }
-  .mic-toggle-label .t1{ font-size:13.5px; font-weight:600; }
-  .mic-toggle-label .t2{ font-size:11.5px; color:var(--text-dim); }
-
-  .switch{
-    position:relative;
-    width:46px; height:26px;
-    flex-shrink:0;
-  }
-  .switch input{ display:none; }
-  .switch .track{
-    position:absolute; inset:0;
-    background:var(--bad-dim);
-    border:1px solid var(--bad);
-    border-radius:20px;
-    cursor:pointer;
-    transition:background .15s;
-  }
-  .switch .thumb{
-    position:absolute;
-    top:2px; right:2px;
-    width:20px; height:20px;
-    border-radius:50%;
-    background:var(--bad);
-    transition:transform .15s;
-  }
-  .switch input:checked + .track{ background:var(--ok-dim); border-color:var(--ok); }
-  .switch input:checked + .track .thumb{ background:var(--ok); transform:translateX(-20px); }
-
-  .field{ margin-bottom:16px; }
-  .field label{
-    display:block;
-    font-size:12.5px;
-    color:var(--text-dim);
-    margin-bottom:8px;
-  }
-  select, .level-bar-wrap{
-    width:100%;
-    background:var(--panel-2);
-    border:1px solid var(--line);
-    border-radius:10px;
-    color:var(--text);
-    padding:10px 12px;
-    font-family:'Inter', sans-serif;
-    font-size:13px;
-  }
-  select{ cursor:pointer; }
-
-  .level-bar-wrap{ padding:12px; }
-  .level-bar-track{
-    width:100%; height:6px;
-    background:var(--panel);
-    border-radius:4px;
-    overflow:hidden;
-  }
-  .level-bar-fill{
-    height:100%;
-    width:0%;
-    background:linear-gradient(90deg, var(--ok), var(--accent));
-    transition:width .07s linear;
-  }
-
-  input[type=range]{
-    width:100%;
-    accent-color:var(--accent);
-  }
-
-  .footer-note{
-    font-size:11.5px;
-    color:var(--text-dim);
-    text-align:center;
-    margin-top:22px;
-    line-height:1.7;
-  }
-
-  /* ============ New Town visual theme (presentation only) ============ */
-  :root{
-    --bg:#100d0a;
-    --panel:rgba(22,18,15,.94);
-    --panel-2:rgba(34,27,22,.96);
-    --line:rgba(255,126,20,.2);
-    --text:#f5f1ec;
-    --text-dim:#aaa096;
-    --accent:#ff7811;
-    --accent-dim:rgba(255,120,17,.16);
-    --ok:#68d391;
-    --ok-dim:rgba(104,211,145,.15);
-    --bad:#f06455;
-    --bad-dim:rgba(240,100,85,.15);
-  }
-
-  body{
-    position:relative;
-    background-color:var(--bg);
-    background-image:
-      linear-gradient(135deg,rgba(9,8,7,.76),rgba(12,9,7,.83)),
-      url('/assets/new-town-wallpaper.png');
-    background-position:center;
-    background-size:cover;
-    background-attachment:fixed;
-  }
-
-  .app{max-width:1120px;}
-
-  #connect-screen{
-    max-width:min(560px,100%);
-  }
-  #connect-screen::before{
-    content:"";
-    display:block;
-    width:100%;
-    height:clamp(118px,22vw,190px);
-    margin:0 auto 4px;
-    background:url('/assets/new-town-banner.png') center / contain no-repeat;
-    filter:drop-shadow(0 12px 30px rgba(255,112,0,.15));
-  }
-
-  .brand{
-    display:inline-flex;
-    gap:9px;
-    margin:0 auto 20px;
-    padding:8px 14px;
-    border:1px solid rgba(255,126,20,.23);
-    border-radius:999px;
-    background:rgba(16,12,9,.68);
-    box-shadow:0 8px 28px rgba(0,0,0,.2);
-  }
-  .brand-dot{
-    background:var(--accent);
-    box-shadow:0 0 14px rgba(255,120,17,.8);
-  }
-  .brand-name{
-    color:#fff3e7;
-    letter-spacing:.12em;
-    text-transform:uppercase;
-  }
-
-  .connect-card,.panel{
-    background:var(--panel);
-    border-color:var(--line);
-    box-shadow:0 20px 70px rgba(0,0,0,.38),inset 0 1px rgba(255,255,255,.035);
-    backdrop-filter:blur(12px);
-  }
-  .connect-card{
-    position:relative;
-    overflow:hidden;
-    border-radius:18px;
-    padding:34px 30px;
-  }
-  .connect-card::before{
-    content:"";
-    position:absolute;
-    inset:0 12% auto;
-    height:1px;
-    background:linear-gradient(90deg,transparent,rgba(255,129,27,.8),transparent);
-  }
-  .connect-card h2{color:#fff7ef;}
-  .connect-card p{color:var(--text-dim);}
-
-  .code-input{
-    background:rgba(12,10,8,.8);
-    border-color:rgba(255,255,255,.1);
-    color:#ff9a42;
-    box-shadow:inset 0 2px 12px rgba(0,0,0,.25);
-  }
-  .code-input:focus{
-    border-color:var(--accent);
-    box-shadow:0 0 0 3px rgba(255,120,17,.13);
-  }
-  .code-input::placeholder{color:#71665d;}
-
-  .btn-primary{
-    background:linear-gradient(135deg,#ff8c21,#e95c00);
-    color:#1b1008;
-    box-shadow:0 8px 24px rgba(238,96,0,.2);
-  }
-  .btn-primary:hover:not(:disabled){
-    background:linear-gradient(135deg,#ffa342,#f36a08);
-    box-shadow:0 10px 30px rgba(238,96,0,.3);
-  }
-  .btn:focus-visible,.disconnect-btn:focus-visible,
-  input:focus-visible,select:focus-visible{
-    outline:2px solid #ff9a42;
-    outline-offset:3px;
-  }
-
-  .avatar{
-    background:linear-gradient(145deg,#ff9c39,#d94f00);
-    color:#211207;
-    box-shadow:0 6px 20px rgba(235,94,0,.22);
-  }
-  .disconnect-btn{
-    border-color:var(--line);
-    color:#d2c7bc;
-  }
-  .disconnect-btn:hover{
-    border-color:var(--bad);
-    color:var(--bad);
-  }
-  .panel{
-    border-radius:16px;
-  }
-  .panel h3{color:#fff4e9;}
-  .panel .sub{color:var(--text-dim);}
-
-  #dashboard .topbar-left::before{
-    content:"";
-    display:block;
-    width:38px;
-    height:38px;
-    flex:0 0 38px;
-    background:url('/assets/new-town-mark.png') center / contain no-repeat;
-    filter:drop-shadow(0 0 10px rgba(255,116,0,.25));
-  }
-  .radar-ring{stroke:rgba(255,145,65,.2);}
-  .player-dot circle.core{
-    fill:var(--accent);
-    stroke:#ffd0a3;
-    stroke-width:1.5;
-  }
-  .player-dot text{fill:#e6d8ca;}
-  .nearby-item,.mic-toggle{
-    background:var(--panel-2);
-    border-color:rgba(255,126,20,.13);
-  }
-  .nearby-avatar{
-    color:#ffb46f;
-    border-color:rgba(255,126,20,.2);
-  }
-  .talk-pulse{border-color:var(--ok);}
-  .level-bar-track{background:rgba(0,0,0,.34);}
-  .level-bar-fill{
-    background:linear-gradient(90deg,#e95c00,#ff9a36);
-  }
-  input[type=range],.vol-slider{accent-color:var(--accent);}
-  select,.level-bar-wrap{
-    background:rgba(16,13,10,.86);
-    border-color:rgba(255,126,20,.17);
-  }
-  .footer-note{color:#b7aa9d;}
-
-  @media (max-width:600px){
-    body{
-      padding:18px 14px;
-      background-attachment:scroll;
-    }
-    #connect-screen::before{
-      height:clamp(100px,30vw,145px);
-      margin-bottom:2px;
-    }
-    .connect-card{padding:28px 20px;}
-    .brand{margin-bottom:16px;}
-    .topbar-left{gap:9px;}
-    #dashboard .topbar-left::before{
-      width:30px;
-      height:30px;
-      flex-basis:30px;
-    }
-  }
-  .activate-user{margin:14px 0;padding:12px 14px;border-radius:12px;background:rgba(255,120,17,.16);color:#ffd9b8;font-weight:600;text-align:center;}
-  /* ---------- الراديو ---------- */
-  .radio-panel{margin-top:16px;}
-  .radio-current{font-weight:700;padding:10px 14px;border-radius:12px;background:rgba(255,255,255,.04);margin-bottom:12px;}
-  .radio-current.on{background:rgba(255,120,17,.16);color:#ffd9b8;}
-  .radio-input-row{display:flex;gap:8px;flex-wrap:wrap;}
-  .radio-input{flex:1;min-width:120px;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:#120e0b;color:#fff;font-size:18px;text-align:center;letter-spacing:2px;}
-  .radio-btn{padding:10px 16px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:transparent;color:#fff;font-weight:700;cursor:pointer;}
-  .radio-btn.primary{background:#ff7811;border-color:#ff7811;color:#1a1009;}
-  .radio-btn:disabled,.radio-ch:disabled{opacity:.45;cursor:not-allowed;}
-  .radio-team{font-size:12px;color:#cfc4ba;margin:-4px 0 10px;}
-  .radio-team.warn{color:#f5c26b;}
-  .radio-status{min-height:20px;margin:10px 0;font-size:13px;color:#cfc4ba;}
-  .radio-status.err{color:#ff8b82;}
-  .radio-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:8px;margin-top:6px;}
-  .radio-ch{padding:12px 0;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:#1e1814;color:#fff;font-weight:700;cursor:pointer;}
-  .radio-ch.active{background:#ff7811;color:#1a1009;border-color:#ff7811;}
-  .radio-ch.locked{color:#6f655d;background:#15110e;}
-</style>
-</head>
-<body>
-
-<div class="app">
-
-  <!-- ============ شاشة التفعيل ============ -->
-  <div id="connect-screen">
-    <div class="brand">
-      <span class="brand-dot"></span>
-      <span class="brand-name">New Town Voice</span>
-    </div>
-
-    <div class="connect-card">
-      <h2>فعّل المايك</h2>
-      <p id="activate-intro">افتح الرابط من داخل اللعبة فقط. الرابط يظهر لك بعد ما تدخل الماب.</p>
-
-      <div id="activate-user" class="activate-user" style="display:none"></div>
-      <button id="connect-btn" class="btn btn-primary" style="display:none">تفعيل المايك</button>
-
-      <div id="status-line" class="status-line"></div>
-    </div>
-
-    <p class="footer-note">
-      هذا الموقع لازم يبقى مفتوح (حتى بالخلفية) عشان المايك يشتغل،<br>لأن روبلكس نفسه ما يقدر يوصل مايك جهازك مباشرة.
-    </p>
-  </div>
-
-  <!-- ============ لوحة التحكم ============ -->
-  <div id="dashboard">
-    <div class="topbar">
-      <div class="topbar-left">
-        <div class="avatar" id="user-avatar">?</div>
-        <div class="user-meta">
-          <div class="name" id="user-name">—</div>
-          <div class="conn-status"><span class="conn-dot" id="conn-dot"></span><span id="conn-text">متصل بروبلكس</span></div>
-        </div>
-      </div>
-      <button class="disconnect-btn" id="disconnect-btn">فصل الربط</button>
-    </div>
-
-    <div class="grid">
-      <!-- العمود الرئيسي: الرادار + القريبين -->
-      <div class="panel">
-        <h3>مين حولك الحين</h3>
-        <div class="sub">يتحدث معك تلقائيًا كل شخص جوا نطاق القرب</div>
-
-        <div id="radar-wrap">
-          <svg id="radar" viewBox="0 0 300 300">
-            <circle class="radar-ring" cx="150" cy="150" r="130"/>
-            <circle class="radar-ring" cx="150" cy="150" r="90"/>
-            <circle class="radar-ring" cx="150" cy="150" r="50"/>
-            <circle class="radar-ring" cx="150" cy="150" r="12" fill="var(--accent)" stroke="none" opacity="0.9"/>
-            <g id="radar-players"></g>
-          </svg>
-          <div class="empty-radar-msg" id="radar-empty">ما فيه أحد قريب منك بعد</div>
-        </div>
-
-        <div class="nearby-list" id="nearby-list">
-          <div class="empty-list">لما يقرب منك أحد بالماب، بيظهر هنا تلقائيًا</div>
-        </div>
-      </div>
-
-      <!-- الشريط الجانبي: إعدادات المايك -->
-      <div class="panel">
-        <h3>إعدادات المايك</h3>
-        <div class="sub">يتحكم بها من هنا أو من زر 🎙 داخل روبلكس</div>
-
-        <div class="mic-toggle">
-          <div class="mic-toggle-label">
-            <div class="mic-icon-circle" id="mic-icon">🎙</div>
-            <div>
-              <div class="t1" id="mic-status-text">المايك شغال</div>
-              <div class="t2">الأشخاص القريبون يسمعونك</div>
-            </div>
-          </div>
-          <label class="switch">
-            <input type="checkbox" id="mic-switch" checked>
-            <span class="track"><span class="thumb"></span></span>
-          </label>
-        </div>
-
-        <div class="field">
-          <label for="mic-select">جهاز المايك</label>
-          <select id="mic-select"><option>جاري البحث عن أجهزة...</option></select>
-        </div>
-
-        <div class="field">
-          <label>مستوى صوتك الحالي</label>
-          <div class="level-bar-wrap">
-            <div class="level-bar-track"><div class="level-bar-fill" id="level-fill"></div></div>
-          </div>
-        </div>
-
-        <div class="field">
-          <label for="volume-slider">مستوى صوت القريبين منك</label>
-          <input type="range" id="volume-slider" min="0" max="100" value="100">
-        </div>
-      </div>
-    </div>
-
-    <div id="radio-panel-root"></div>
-  </div>
-
-</div>
-
-<script src="/radio-panel.js"></script>
-<script>
-/* =========================================================================
-   ProxiTalk — منطق الموقع (نسخة معدّلة للجوال)
-   ========================================================================= */
-
-const WS_PROTOCOL = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-const BACKEND_URL = `${WS_PROTOCOL}//${window.location.host}/ws/web`;
-
-// STUN وحده ما يكفي لشبكات الجوال (CGNAT) — لازم TURN عشان الصوت يوصل.
-// هذا سيرفر مجاني للتجربة. للاستخدام الجاد سجّل مجانًا بـ metered.ca وبدّل البيانات.
-const ICE_SERVERS = [
-  { urls: 'stun:stun.l.google.com:19302' },
-  { urls: 'turn:openrelay.metered.ca:80',               username: 'openrelayproject', credential: 'openrelayproject' },
-  { urls: 'turn:openrelay.metered.ca:443',              username: 'openrelayproject', credential: 'openrelayproject' },
-  { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
-];
-
-// ---------- عناصر DOM ----------
-const connectScreen = document.getElementById('connect-screen');
-const dashboard = document.getElementById('dashboard');
-const connectBtn = document.getElementById('connect-btn');
-const activateIntro = document.getElementById('activate-intro');
-const activateUser = document.getElementById('activate-user');
-const statusLine = document.getElementById('status-line');
-const userAvatar = document.getElementById('user-avatar');
-const userName = document.getElementById('user-name');
-const connDot = document.getElementById('conn-dot');
-const connText = document.getElementById('conn-text');
-const disconnectBtn = document.getElementById('disconnect-btn');
-const radarPlayersG = document.getElementById('radar-players');
-const radarEmpty = document.getElementById('radar-empty');
-const nearbyList = document.getElementById('nearby-list');
-const micIcon = document.getElementById('mic-icon');
-const micStatusText = document.getElementById('mic-status-text');
-const micSwitch = document.getElementById('mic-switch');
-const micSelect = document.getElementById('mic-select');
-const levelFill = document.getElementById('level-fill');
-const volumeSlider = document.getElementById('volume-slider');
-
-
-// =========================================================================
-// 1) ConnectionManager (مع إعادة اتصال تلقائي)
-// =========================================================================
-const ConnectionManager = {
-  ws: null,
-  connected: false,
-  code: null,
-  myUserId: null,
-  manualClose: false,
-  retryTimer: null,
-
-  connect() {
-    this.code = 'linked'; // علامة فقط: المتصفح مربوط، والكوكي يحدد الجلسة
-    this.manualClose = false;
-    clearTimeout(this.retryTimer);
-    setStatus('يتم الاتصال...', '');
-    connectBtn.disabled = true;
-
-    try {
-      this.ws = new WebSocket(BACKEND_URL);
-    } catch (e) {
-      setStatus('تعذر إنشاء الاتصال — تأكد من عنوان السيرفر', 'err');
-      connectBtn.disabled = false;
-      return;
-    }
-
-    this.ws.onopen = () => setStatus('تم الاتصال، بالانتظار للتأكيد من اللعبة...', '');
-
-    this.ws.onmessage = (event) => {
-      let msg;
-      try { msg = JSON.parse(event.data); } catch (e) { return; }
-      this.handleMessage(msg);
-    };
-
-    this.ws.onerror = () => { /* onclose بيتعامل معها */ };
-
-    this.ws.onclose = () => {
-      this.connected = false;
-      connDot.classList.add('off');
-      connText.textContent = 'انقطع الاتصال';
-      connectBtn.disabled = false;
-      // إذا الموقع بالخلفية بالجوال، المتصفح يقطع الاتصال — نعيد الربط تلقائيًا
-      if (!this.manualClose && this.code && dashboard.style.display === 'block') {
-        connText.textContent = 'جاري إعادة الاتصال...';
-        this.retryTimer = setTimeout(() => this.connect(), 1500);
-      }
-    };
-  },
-
-  handleMessage(msg) {
-    switch (msg.type) {
-      case 'linked':
-        this.connected = true;
-        this.myUserId = msg.userId;
-        showDashboard(msg.username, msg.userId);
-        if (typeof radioPanel !== 'undefined') radioPanel.setTeam(msg.team);
-        // نزامن حالة المايك الحالية مع السيرفر (مهم بعد إعادة الاتصال)
-        this.send({ type: 'mic_toggle', muted: VoiceManager.muted });
-        break;
-      case 'nearby_update':
-        UI.renderNearby(msg.players || []);
-        break;
-      case 'mic_state':
-        VoiceManager.setMuted(msg.muted, true);
-        break;
-      case 'radio_state':
-        if (typeof radioPanel !== 'undefined') radioPanel.onState(msg);
-        break;
-      case 'radio_error':
-        if (typeof radioPanel !== 'undefined') radioPanel.onError(msg);
-        break;
-      case 'webrtc_signal':
-        VoiceManager.handleSignal(msg.from, msg.signal);
-        break;
-      case 'error':
-        // الجلسة غير مفعّلة/منتهية: لا نعيد المحاولة
-        this.manualClose = true;
-        this.code = null;
-        showActivateScreen(msg.message || 'الجلسة غير مفعّلة', 'err');
-        break;
-    }
-  },
-
-  send(obj) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify(obj));
-  },
-
-  disconnect() {
-    this.manualClose = true;
-    this.code = null;
-    clearTimeout(this.retryTimer);
-    if (this.ws) this.ws.close();
-    this.connected = false;
-  }
-};
-
-// =========================================================================
-// 2) VoiceManager — المايك + WebRTC
-// =========================================================================
-const VoiceManager = {
-  localStream: null,
-  peers: {},
-  pendingCandidates: {},
-  muted: false,
-  audioCtx: null,
-  analyser: null,
-  meterStarted: false,
-  wakeLock: null,
-
-  audioConstraints(deviceId) {
-    const c = { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
-    if (deviceId) c.deviceId = { exact: deviceId };
-    return { audio: c };
-  },
-
-  async init() {
-    if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      setStatus('المتصفح ما يسمح بالمايك هنا — لازم تفتح الرابط عبر https وبمتصفح Chrome أو Safari', 'err');
-      return false;
-    }
-    // نعيد استخدام المايك لو لسا شغال بدل ما نطلب واحد جديد كل مرة
-    if (this.localStream && this.localStream.getAudioTracks().some(t => t.readyState === 'live')) {
-      this.resumeAudio();
-      return true;
-    }
-    try {
-      this.localStream = await navigator.mediaDevices.getUserMedia(this.audioConstraints());
-      this.watchTrack();
-      this.setupLevelMeter();
-      await this.populateMicList();
-      this.requestWakeLock();
-      return true;
-    } catch (e) {
-      const reasons = {
-        NotAllowedError: 'انرفض إذن المايك — فعّله من إعدادات المتصفح للموقع ثم حدّث الصفحة',
-        NotFoundError: 'ما لقينا مايك بالجهاز',
-        NotReadableError: 'المايك مستخدم من تطبيق ثاني، سكّر التطبيقات الثانية وجرب',
-      };
-      setStatus(reasons[e.name] || ('تعذر تشغيل المايك: ' + e.name), 'err');
-      return false;
-    }
-  },
-
-  // لو النظام قتل المايك (يصير بالجوال لما تروح لتطبيق روبلكس) نسترجعه
-  watchTrack() {
-    this.localStream.getAudioTracks().forEach(t => {
-      t.enabled = !this.muted;
-      t.onended = () => this.recoverMic();
-    });
-  },
-
-  async recoverMic() {
-    if (!ConnectionManager.code) return;
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia(this.audioConstraints(micSelect.value));
-      const newTrack = stream.getAudioTracks()[0];
-      newTrack.enabled = !this.muted;
-      // نبدل الصوت داخل كل الاتصالات الحالية بدون ما نقطعها
-      Object.values(this.peers).forEach(pc => {
-        const sender = pc.getSenders().find(s => s.track && s.track.kind === 'audio') ||
-                       pc.getSenders().find(s => !s.track);
-        if (sender) sender.replaceTrack(newTrack);
-      });
-      if (this.localStream) this.localStream.getTracks().forEach(t => t.stop());
-      this.localStream = stream;
-      this.watchTrack();
-      this.rewireMeter();
-    } catch (e) { /* بنحاول مرة ثانية لما ترجع الصفحة للواجهة */ }
-  },
-
-  async changeDevice(deviceId) {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia(this.audioConstraints(deviceId));
-      const newTrack = stream.getAudioTracks()[0];
-      newTrack.enabled = !this.muted;
-      Object.values(this.peers).forEach(pc => {
-        const sender = pc.getSenders().find(s => s.track && s.track.kind === 'audio');
-        if (sender) sender.replaceTrack(newTrack);
-      });
-      this.localStream.getTracks().forEach(t => t.stop());
-      this.localStream = stream;
-      this.watchTrack();
-      this.rewireMeter();
-    } catch (e) { setStatus('تعذر التبديل لهذا المايك', 'err'); }
-  },
-
-  async populateMicList() {
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const mics = devices.filter(d => d.kind === 'audioinput');
-    micSelect.innerHTML = '';
-    if (mics.length === 0) {
-      micSelect.innerHTML = '<option>ما فيه أجهزة مايك متاحة</option>';
-      return;
-    }
-    mics.forEach((d, i) => {
-      const opt = document.createElement('option');
-      opt.value = d.deviceId;
-      opt.textContent = d.label || `مايك ${i + 1}`;
-      micSelect.appendChild(opt);
-    });
-  },
-
-  setupLevelMeter() {
-    if (!this.audioCtx) this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    this.rewireMeter();
-    if (this.meterStarted) return;
-    this.meterStarted = true;
-    const data = new Uint8Array(256);
-    const loop = () => {
-      if (this.analyser) {
-        this.analyser.getByteFrequencyData(data);
-        const avg = data.reduce((a, b) => a + b, 0) / data.length;
-        levelFill.style.width = (this.muted ? 0 : Math.min(100, Math.round((avg / 90) * 100))) + '%';
-      }
-      requestAnimationFrame(loop);
-    };
-    loop();
-  },
-
-  rewireMeter() {
-    if (!this.audioCtx || !this.localStream) return;
-    const source = this.audioCtx.createMediaStreamSource(this.localStream);
-    this.analyser = this.audioCtx.createAnalyser();
-    this.analyser.fftSize = 512;
-    source.connect(this.analyser);
-  },
-
-  resumeAudio() {
-    if (this.audioCtx && this.audioCtx.state === 'suspended') this.audioCtx.resume();
-    document.querySelectorAll('audio').forEach(a => { if (a.paused) a.play().catch(() => {}); });
-  },
-
-  async requestWakeLock() {
-    try {
-      if ('wakeLock' in navigator && !this.wakeLock) {
-        this.wakeLock = await navigator.wakeLock.request('screen');
-        this.wakeLock.addEventListener('release', () => { this.wakeLock = null; });
-      }
-    } catch (e) { /* مو مدعوم أو انرفض */ }
-  },
-
-  setMuted(muted, fromRemote = false) {
-    this.muted = muted;
-    if (this.localStream) this.localStream.getAudioTracks().forEach(t => t.enabled = !muted);
-    micSwitch.checked = !muted;
-    micIcon.classList.toggle('muted', muted);
-    micIcon.textContent = muted ? '🔇' : '🎙';
-    micStatusText.textContent = muted ? 'المايك مطفي' : 'المايك شغال';
-    if (!fromRemote) ConnectionManager.send({ type: 'mic_toggle', muted });
-  },
-
-  // ---- WebRTC ----
-  // من يبدأ العرض (offer)؟ الأصغر userId فقط، عشان ما يصير تصادم لما الطرفين يعرضون بنفس اللحظة
-  isInitiator(otherId) {
-    return Number(ConnectionManager.myUserId) < Number(otherId);
-  },
-
-  ensurePeer(userId) {
-    if (this.peers[userId]) return this.peers[userId];
-
-    const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
-    this.localStream.getTracks().forEach(track => pc.addTrack(track, this.localStream));
-
-    pc.onicecandidate = (e) => {
-      if (e.candidate) {
-        ConnectionManager.send({ type: 'webrtc_signal', to: userId, signal: { candidate: e.candidate } });
-      }
-    };
-
-    pc.ontrack = (e) => {
-      let audioEl = document.getElementById('audio-' + userId);
-      if (!audioEl) {
-        audioEl = document.createElement('audio');
-        audioEl.id = 'audio-' + userId;
-        audioEl.autoplay = true;
-        audioEl.playsInline = true;
-        document.body.appendChild(audioEl);
-      }
-      audioEl.srcObject = e.streams[0];
-      audioEl.volume = volumeSlider.value / 100;
-      audioEl.play().catch(() => {}); // الجوال يمنع التشغيل التلقائي أحيانًا؛ أول لمسة بالصفحة تشغله
-    };
-
-    pc.onconnectionstatechange = () => {
-      if (pc.connectionState === 'failed') {
-        // نفشل؟ نسكر ونخلي التحديث الجاي يعيد المحاولة
-        this.disconnectFromPeer(userId);
-        UI.knownNearbyIds.delete(userId);
-      }
-    };
-
-    this.peers[userId] = pc;
-    return pc;
-  },
-
-  async connectToPeer(userId) {
-    if (!this.localStream || !this.isInitiator(userId)) return; // الطرف الثاني ينتظر العرض
-    const pc = this.ensurePeer(userId);
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    ConnectionManager.send({ type: 'webrtc_signal', to: userId, signal: { sdp: pc.localDescription } });
-  },
-
-  async handleSignal(fromUserId, signal) {
-    if (!this.localStream) return;
-
-    // لو وصلنا عرض جديد وعندنا اتصال قديم ميت، نبدأ من جديد
-    if (signal.sdp && signal.sdp.type === 'offer' && this.peers[fromUserId]) {
-      const st = this.peers[fromUserId].connectionState;
-      if (['failed', 'closed', 'disconnected'].includes(st)) this.disconnectFromPeer(fromUserId);
-    }
-
-    const pc = this.ensurePeer(fromUserId);
-
-    if (signal.sdp) {
-      await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
-      // نطبق المرشحات اللي وصلت قبل الـ SDP
-      const queued = this.pendingCandidates[fromUserId] || [];
-      this.pendingCandidates[fromUserId] = [];
-      for (const c of queued) { try { await pc.addIceCandidate(c); } catch (e) {} }
-
-      if (signal.sdp.type === 'offer') {
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        ConnectionManager.send({ type: 'webrtc_signal', to: fromUserId, signal: { sdp: pc.localDescription } });
-      }
-    } else if (signal.candidate) {
-      if (pc.remoteDescription) {
-        try { await pc.addIceCandidate(signal.candidate); } catch (e) {}
-      } else {
-        (this.pendingCandidates[fromUserId] ||= []).push(signal.candidate);
-      }
-    }
-  },
-
-  disconnectFromPeer(userId) {
-    const pc = this.peers[userId];
-    if (pc) { pc.close(); delete this.peers[userId]; }
-    delete this.pendingCandidates[userId];
-    const audioEl = document.getElementById('audio-' + userId);
-    if (audioEl) audioEl.remove();
-  },
-
-  disconnectAll() {
-    Object.keys(this.peers).forEach(id => this.disconnectFromPeer(id));
-  }
-};
-
-// =========================================================================
-// 3) UI
-// =========================================================================
-const UI = {
-  knownNearbyIds: new Set(),
-
-  renderNearby(players) {
-    radarPlayersG.innerHTML = '';
-    radarEmpty.style.display = players.length === 0 ? 'block' : 'none';
-
-    players.forEach((p) => {
-      const angle = this.stableAngleFor(p.userId);
-      const maxDist = 60, radiusRange = 130;
-      const r = Math.min(radiusRange, (p.distance / maxDist) * radiusRange);
-      const cx = 150 + r * Math.cos(angle);
-      const cy = 150 + r * Math.sin(angle);
-      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-      g.setAttribute('class', 'player-dot');
-      g.innerHTML = `
-        <circle class="core" cx="${cx}" cy="${cy}" r="6"></circle>
-        <text x="${cx}" y="${cy - 12}" text-anchor="middle">${escapeHtml(p.username)}</text>`;
-      radarPlayersG.appendChild(g);
-    });
-
-    if (players.length === 0) {
-      nearbyList.innerHTML = '<div class="empty-list">لما يقرب منك أحد بالماب، بيظهر هنا تلقائيًا</div>';
-    } else {
-      nearbyList.innerHTML = '';
-      players.forEach(p => {
-        const item = document.createElement('div');
-        item.className = 'nearby-item';
-        item.innerHTML = `
-          <div class="nearby-avatar" id="avatar-${p.userId}">
-            <span class="talk-pulse"></span>${initials(p.username)}
-          </div>
-          <div class="nearby-info">
-            <div class="name">${escapeHtml(p.username)}</div>
-            <div class="dist">${Math.round(p.distance)} وحدة تقريبًا</div>
-          </div>`;
-        nearbyList.appendChild(item);
-      });
-    }
-
-    const currentIds = new Set(players.map(p => p.userId));
-    currentIds.forEach(id => { if (!this.knownNearbyIds.has(id)) VoiceManager.connectToPeer(id); });
-    this.knownNearbyIds.forEach(id => { if (!currentIds.has(id)) VoiceManager.disconnectFromPeer(id); });
-    this.knownNearbyIds = currentIds;
-  },
-
-  stableAngleFor(userId) {
-    let hash = 0;
-    const str = String(userId);
-    for (let i = 0; i < str.length; i++) hash = (hash * 31 + str.charCodeAt(i)) % 360;
-    return (hash * Math.PI) / 180;
-  }
-};
-
-function initials(name) { return (name || '?').slice(0, 2).toUpperCase(); }
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
-function setStatus(text, cls) {
-  statusLine.textContent = text;
-  statusLine.className = 'status-line' + (cls ? ' ' + cls : '');
+/* NEW TOWN RADIO — Tactical Device UI */
+.radio-panel {
+  --radio-orange: #ff7811;
+  --radio-green: #6cff9a;
+  position: relative;
+  width: 100%;
+  max-width: 900px;
+  margin: 24px auto;
+  padding: clamp(16px, 3vw, 28px);
+  overflow: hidden;
+  border: 1px solid rgba(255, 120, 17, .38);
+  border-radius: 22px;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(255,120,17,.10), transparent 60%),
+    linear-gradient(145deg, #202127, #101115 75%);
+  box-shadow: 0 18px 50px #0008,
+              inset 0 1px 0 #ffffff12;
 }
 
-function showDashboard(username) {
-  connectScreen.style.display = 'none';
-  dashboard.style.display = 'block';
-  userName.textContent = username;
-  userAvatar.textContent = initials(username);
-  connDot.classList.remove('off');
-  connText.textContent = 'متصل بروبلكس';
+.radio-panel::before {
+  content: "NT  /  COMMUNICATION SYSTEM";
+  display: block;
+  padding-bottom: 14px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid #ffffff15;
+  color: #ff9b4a;
+  font: 700 11px/1.5 monospace;
+  letter-spacing: 2px;
+  direction: ltr;
+  text-align: left;
 }
 
-// =========================================================================
-// أحداث الواجهة
-// =========================================================================
-
-disconnectBtn.addEventListener('click', () => {
-  ConnectionManager.disconnect();
-  VoiceManager.disconnectAll();
-  UI.knownNearbyIds = new Set();
-  if (typeof radioPanel !== 'undefined') radioPanel.reset();
-  fetch('/api/session/unlink', { method: 'POST', credentials: 'same-origin' }).catch(() => {});
-  showActivateScreen('تم فصل الربط. ارجع للعبة وافتح الرابط الجديد لتفعيله مرة ثانية.', '');
-});
-
-micSwitch.addEventListener('change', () => VoiceManager.setMuted(!micSwitch.checked, false));
-micSelect.addEventListener('change', () => VoiceManager.changeDevice(micSelect.value));
-
-volumeSlider.addEventListener('input', () => {
-  const v = volumeSlider.value / 100;
-  document.querySelectorAll('audio').forEach(a => a.volume = v);
-});
-
-// أي لمسة بالصفحة تفك حظر الصوت بالجوال
-['touchstart', 'click'].forEach(ev =>
-  document.addEventListener(ev, () => VoiceManager.resumeAudio(), { passive: true }));
-
-// لما ترجع للصفحة (بعد ما كنت بروبلكس): نتأكد المايك والاتصال والشاشة
-document.addEventListener('visibilitychange', async () => {
-  if (document.visibilityState !== 'visible' || !ConnectionManager.code) return;
-  VoiceManager.resumeAudio();
-  VoiceManager.requestWakeLock();
-  const tracks = VoiceManager.localStream ? VoiceManager.localStream.getAudioTracks() : [];
-  if (!tracks.length || tracks.some(t => t.readyState !== 'live')) await VoiceManager.recoverMic();
-  const ws = ConnectionManager.ws;
-  if (!ws || ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
-    ConnectionManager.connect();
-  }
-});
-// =========================================================================
-// التفعيل عبر الرابط (بدون كتابة كود)
-// =========================================================================
-const ACTIVATE_TOKEN = (location.pathname.match(/^\/a\/([A-Za-z0-9_-]{16,64})$/) || [])[1] || null;
-const DEFAULT_INTRO = 'افتح الرابط من داخل اللعبة فقط. الرابط يظهر لك بعد ما تدخل الماب.';
-let linkedResume = false; // true = المتصفح مربوط من قبل ونحتاج تشغيل المايك بضغطة
-const ACTIVATE_MESSAGES = {
-  expired: 'انتهت صلاحية الرابط. ارجع للعبة وخذ رابطاً جديداً.',
-  used: 'هذا الرابط استُخدم قبل. ارجع للعبة وخذ رابطاً جديداً.',
-  invalid: 'الرابط غير صحيح أو الجلسة انتهت. ارجع للعبة وخذ رابطاً جديداً.',
-};
-
-function showActivateScreen(message, cls) {
-  linkedResume = false;
-  connectBtn.textContent = 'تفعيل المايك';
-  dashboard.style.display = 'none';
-  connectScreen.style.display = 'block';
-  activateIntro.textContent = DEFAULT_INTRO;
-  activateUser.style.display = 'none';
-  connectBtn.style.display = 'none';
-  connectBtn.disabled = false;
-  setStatus(message || '', cls || '');
+.radio-panel h3 {
+  margin: 0 0 8px;
+  font-size: clamp(20px, 4vw, 28px);
+  letter-spacing: .5px;
 }
 
-// مربوط من قبل: المايك لازم يشتغل بضغطة (الجوال يمنع التشغيل التلقائي)
-function showMicStartScreen(username) {
-  linkedResume = true;
-  activateUser.textContent = 'الحساب: ' + username;
-  activateUser.style.display = 'block';
-  activateIntro.textContent = 'أنت مربوط من قبل. اضغط الزر عشان يشتغل المايك ويوصل الصوت.';
-  connectBtn.textContent = 'تشغيل المايك';
-  connectBtn.style.display = '';
-  connectBtn.disabled = false;
-  setStatus('', '');
+.radio-panel .sub {
+  margin-bottom: 20px;
+  font-size: 13px;
+  line-height: 1.7;
 }
 
-function showActivateButton(username) {
-  activateUser.textContent = 'الحساب: ' + username;
-  activateUser.style.display = 'block';
-  activateIntro.textContent = 'اضغط الزر عشان تفعّل المايك لهذا الحساب.';
-  connectBtn.textContent = 'تفعيل المايك';
-  connectBtn.style.display = '';
-  connectBtn.disabled = false;
-  setStatus('', '');
+/* Digital frequency display */
+.radio-current {
+  position: relative;
+  display: flex;
+  min-height: 100px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 7px;
+  margin-bottom: 14px;
+  padding: 20px 14px;
+  overflow: hidden;
+  border: 2px solid #4b564b;
+  border-radius: 12px;
+  background:
+    repeating-linear-gradient(
+      0deg, transparent 0 4px, #00000009 4px 5px
+    ),
+    #111b15;
+  color: #8b9b8c;
+  font: 700 clamp(17px, 4vw, 24px)/1.4 monospace;
+  text-align: center;
+  box-shadow: inset 0 3px 15px #0009;
 }
 
-connectBtn.addEventListener('click', async () => {
-  if (!ACTIVATE_TOKEN && !linkedResume) return;
-  connectBtn.disabled = true;
-  setStatus(linkedResume ? 'جارٍ تشغيل المايك...' : 'جارٍ التفعيل...', '');
-  const ok = await VoiceManager.init(); // لازم يكون من ضغطة المستخدم عشان الجوال
-  if (!ok) { connectBtn.disabled = false; return; }
+.radio-current::before {
+  content: "FREQUENCY / CHANNEL";
+  color: #91a18f;
+  font-size: 10px;
+  letter-spacing: 2px;
+}
 
-  // المايك جاهز قبل ما نتصل: هكذا تتكون اتصالات الصوت مع القريبين
-  if (linkedResume) {
-    ConnectionManager.connect();
-    return;
+.radio-current.on {
+  border-color: #51895d;
+  background-color: #10251a;
+  color: var(--radio-green);
+  text-shadow: 0 0 12px #6cff9a55;
+}
+
+/* Team and connection state */
+.radio-team {
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: #ffffff06;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.radio-team.warn {
+  color: #ffc66d;
+  border: 1px solid #ffc66d25;
+}
+
+.radio-input-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 9px;
+  margin-top: 18px;
+}
+
+.radio-input {
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  padding: 12px;
+  border: 1px solid #ffffff20;
+  border-radius: 10px;
+  background: #0d0e12;
+  color: #ffb16b;
+  font: 700 18px monospace;
+  text-align: center;
+}
+
+.radio-btn {
+  min-height: 48px;
+  padding: 12px 18px;
+  border: 1px solid #ffffff20;
+  border-radius: 10px;
+  background: #292b32;
+  color: #f5f5f5;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s, transform .15s;
+}
+
+.radio-btn.primary {
+  border-color: var(--radio-orange);
+  background: var(--radio-orange);
+  color: #1b1008;
+}
+
+.radio-btn:hover:not(:disabled),
+.radio-ch:hover:not(:disabled) {
+  filter: brightness(1.15);
+}
+
+.radio-btn:active:not(:disabled),
+.radio-ch:active:not(:disabled) {
+  transform: scale(.97);
+}
+
+.radio-btn:disabled,
+.radio-ch:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+.radio-status {
+  min-height: 22px;
+  margin: 12px 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.radio-status.err {
+  color: #ff817d;
+}
+
+/* Channel selector */
+.radio-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 9px;
+  margin-top: 16px;
+}
+
+.radio-ch {
+  position: relative;
+  min-width: 0;
+  min-height: 52px;
+  border: 1px solid #ffffff17;
+  border-radius: 10px;
+  background: linear-gradient(145deg, #292b31, #191a1f);
+  color: #e6e7eb;
+  font: 700 17px monospace;
+  cursor: pointer;
+  transition: .15s ease;
+}
+
+.radio-ch::before {
+  content: "CH";
+  display: block;
+  margin-bottom: 3px;
+  color: #8b8e98;
+  font: 9px monospace;
+  letter-spacing: 1px;
+}
+
+.radio-ch.active {
+  border-color: var(--radio-orange);
+  background: linear-gradient(145deg, #ff963e, #e85d00);
+  color: #201107;
+  box-shadow: 0 0 18px #ff781125;
+}
+
+.radio-ch.active::before {
+  color: #44220a;
+}
+
+.radio-ch.locked {
+  background: #141519;
+  color: #686b74;
+  border-color: #ffffff0b;
+}
+
+.radio-ch:focus-visible,
+.radio-btn:focus-visible,
+.radio-input:focus-visible {
+  outline: 2px solid #ffb16b;
+  outline-offset: 3px;
+}
+
+@media (max-width: 600px) {
+  .radio-panel {
+    margin: 16px auto;
+    padding: 16px 12px;
+    border-radius: 16px;
   }
 
-  try {
-    const res = await fetch(`/api/link/${ACTIVATE_TOKEN}/activate`, { method: 'POST', credentials: 'same-origin' });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      showActivateScreen(ACTIVATE_MESSAGES[data.status] || 'تعذّر التفعيل، حاول مرة ثانية.', 'err');
-      return;
-    }
-    history.replaceState(null, '', '/'); // نشيل التوكن من شريط العنوان
-    ConnectionManager.connect();
-  } catch (e) {
-    connectBtn.disabled = false;
-    setStatus('تعذّر الوصول للسيرفر، تأكد من الإنترنت وحاول مرة ثانية.', 'err');
-  }
-});
-
-async function bootstrap() {
-  // 1) إذا المتصفح مربوط من قبل (كوكي صالح)، نرجع للوحة مباشرة
-  try {
-    const res = await fetch('/api/session', { credentials: 'same-origin', cache: 'no-store' });
-    const data = await res.json();
-    if (data.linked) {
-      history.replaceState(null, '', '/');
-      showMicStartScreen(data.username);
-      return;
-    }
-  } catch (e) { /* نكمل ونجرب الرابط */ }
-
-  // 2) لا يوجد رابط في العنوان
-  if (!ACTIVATE_TOKEN) {
-    showActivateScreen('افتح الرابط اللي يطلع لك من داخل اللعبة.', '');
-    return;
+  .radio-panel::before {
+    letter-spacing: 1px;
   }
 
-  // 3) نتحقق من الرابط بدون ما نستهلكه
-  try {
-    const res = await fetch(`/api/link/${ACTIVATE_TOKEN}`, { cache: 'no-store' });
-    const data = await res.json();
-    if (data.status === 'pending') showActivateButton(data.username);
-    else showActivateScreen(ACTIVATE_MESSAGES[data.status] || ACTIVATE_MESSAGES.invalid, 'err');
-  } catch (e) {
-    showActivateScreen('تعذّر الوصول للسيرفر، حدّث الصفحة وحاول مرة ثانية.', 'err');
+  .radio-input-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .radio-input {
+    grid-column: 1 / -1;
+  }
+
+  .radio-btn {
+    padding: 12px;
+  }
+
+  .radio-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .radio-ch {
+    min-height: 48px;
   }
 }
 
-// قسم الراديو: يرسل الطلبات عبر نفس اتصال الـ WebSocket
-const radioPanel = RadioPanel.create({
-  container: document.getElementById('radio-panel-root'),
-  send: (obj) => ConnectionManager.send(obj),
-});
-
-bootstrap();
-</script>
-
-</body>
-</html>
+@media (max-width: 350px) {
+  .radio-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
